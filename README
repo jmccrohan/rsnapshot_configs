@@ -1,0 +1,7 @@
+Rsnapshot Configurations
+----------------------
+
+Example rsnapshot configurations for two different machines:
+
+persistent.host is always up (typical server type machine)
+nonpersistent.host is turned off when not in use (typical desktop type machine)

@@ -1,0 +1,64 @@
+#!/bin/bash
+
+if ! /bin/ping -c 1 nonpersistent.host &> /dev/null; then exit 0; fi
+
+DATEDIR=/var/log/rsnapshot/nonpersistent
+
+LASTDAILY=$((`/usr/bin/stat -c %X $DATEDIR/lastdaily` / 86400)) # number of days since epoch of the last backup
+LASTWEEKLY=$((`/usr/bin/stat -c %X $DATEDIR/lastweekly` / 86400))
+LASTMONTHLY=$((`/usr/bin/stat -c %X $DATEDIR/lastmonthly` / 86400))
+NOW=$((`/bin/date +%s` / 86400))
+
+MONTH=30 # number of days between backups
+WEEK=7
+DAY=1
+
+FAIL=0
+
+/usr/bin/rsnapshot -c /etc/rsnapshot.nonpersistent.conf sync || FAIL="1"
+
+if [[ $FAIL == "0" ]]; then
+
+FAIL=0
+
+if [[ "$(($NOW-$LASTMONTHLY))" -gt "$MONTH" ]]; then
+    /bin/echo "Starting monthly snapshot"
+    /usr/bin/rsnapshot -c /etc/rsnapshot.nonpersistent.conf monthly || FAIL="1" # If rsnapshot failed, set FAIL=1
+
+    if [[ $FAIL == "0" ]]; then
+        /bin/echo "Monthly snapshot successful"
+        /bin/touch $DATEDIR/lastmonthly
+    else
+        /bin/echo "Error(s) with monthly snapshot"
+    fi
+fi
+
+FAIL=0
+
+if [[ "$(($NOW-$LASTWEEKLY))" -gt "$WEEK" ]]; then
+    /bin/echo "Starting weekly snapshot"
+    /usr/bin/rsnapshot -c /etc/rsnapshot.nonpersistent.conf weekly || FAIL="1"
+
+    if [[ $FAIL == "0" ]]; then
+        /bin/echo "Weekly snapshot successful"
+        /bin/touch $DATEDIR/lastweekly
+    else
+        /bin/echo "Error(s) with weekly snapshot"
+    fi
+fi
+
+FAIL=0
+
+if [[ "$(($NOW-$LASTDAILY))" -gt "$DAY" ]]; then
+    /bin/echo "Starting daily snapshot"
+    /usr/bin/rsnapshot -c /etc/rsnapshot.nonpersistent.conf daily || FAIL="1"
+
+    if [[ $FAIL == "0" ]]; then
+        /bin/echo "Daily snapshot successful"
+        /bin/touch $DATEDIR/lastdaily
+    else
+        /bin/echo "Error(s) with daily snapshot"
+    fi
+fi
+
+fi
